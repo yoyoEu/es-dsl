@@ -80,7 +80,7 @@ module ES
           model_qf_mod:   @model_qf_mod,
           **opts
         )
-        block.arity.zero? ? kb.instance_exec(&block) : block.call(kb) if block
+        BlockDispatch.call(kb, block)
         add_clause('knn' => kb.to_h)
       end
 

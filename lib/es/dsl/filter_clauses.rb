@@ -68,7 +68,7 @@ module ES
       def bool(raw = nil, &block)
         if block_given?
           bc = BoolContext.new(@model_qf_mod)
-          block.arity == 0 ? bc.instance_exec(&block) : block.call(bc)
+          BlockDispatch.call(bc, block)
           add_clause(bc.to_h)
         else
           add_clause('bool' => deep_stringify(raw || {}))

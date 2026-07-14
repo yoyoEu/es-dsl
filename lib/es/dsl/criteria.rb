@@ -79,7 +79,7 @@ module ES
           model_qf_mod:   model_filter_module,
           **opts
         )
-        block.arity.zero? ? @knn_builder.instance_exec(&block) : block.call(@knn_builder) if block
+        BlockDispatch.call(@knn_builder, block)
         self
       end
 
@@ -89,7 +89,7 @@ module ES
         reset_compiled!
         if block_given?
           ctx = FilterContext.new(model_filter_module)
-          block.arity.zero? ? ctx.instance_exec(&block) : block.call(ctx)
+          BlockDispatch.call(ctx, block)
           @filter_clauses.concat(ctx.clauses)
         end
         self
@@ -99,7 +99,7 @@ module ES
         reset_compiled!
         if block_given?
           ctx = MustContext.new(model_filter_module)
-          block.arity.zero? ? ctx.instance_exec(&block) : block.call(ctx)
+          BlockDispatch.call(ctx, block)
           @must_clauses.concat(ctx.clauses)
         end
         self
@@ -109,7 +109,7 @@ module ES
         reset_compiled!
         if block_given?
           ctx = ShouldContext.new(model_filter_module)
-          block.arity.zero? ? ctx.instance_exec(&block) : block.call(ctx)
+          BlockDispatch.call(ctx, block)
           @should_clauses.concat(ctx.clauses)
         end
         self
@@ -119,7 +119,7 @@ module ES
         reset_compiled!
         if block_given?
           ctx = MustNotContext.new(model_filter_module)
-          block.arity.zero? ? ctx.instance_exec(&block) : block.call(ctx)
+          BlockDispatch.call(ctx, block)
           @must_not_clauses.concat(ctx.clauses)
         end
         self
@@ -355,16 +355,12 @@ module ES
         agg_hash = {}
         @agg_blocks.each do |name, blk|
           ab = AggBuilder.new(name, @model_class)
-          case blk.arity
-          when 0
-            ab.instance_exec(&blk)
-          when 1
-            blk.call(ab)
-          else
+          f = nil
+          if blk.arity > 1
             f = FilterContext.new(model_filter_module)
             ab.f_ref = f
-            blk.call(ab, f)
           end
+          BlockDispatch.call(ab, blk, f)
           agg_hash[name.to_s] = ab.build
         end
         @raw_agg_hashes.each do |name, raw|
@@ -440,22 +436,9 @@ module ES
         if @model_class.respond_to?(:_agg_scopes) && (defn = @model_class._agg_scopes[name.to_sym])
           accum = AggAccumulator.new(@model_class)
           f = accum.f
-          case defn.arity
-          when 0 then accum.instance_exec(&defn)
-          when 1 then defn.call(accum)
-          when 2 then defn.call(accum, f)
-          else        defn.call(accum, f, *args, **kwargs)
-          end
-          if block
-            main_ab = accum.last_agg_builder
-            if main_ab
-              case block.arity
-              when 0 then main_ab.instance_exec(&block)
-              when 1 then block.call(main_ab)
-              else        block.call(main_ab, f)
-              end
-            end
-          end
+          BlockDispatch.call_scope(defn, accum, f, args, kwargs)
+          main_ab = accum.last_agg_builder
+          BlockDispatch.call(main_ab, block, f) if block && main_ab
           accum.to_raw_aggs.each { |n, raw| aggregate(n, raw) }
           return self
         end

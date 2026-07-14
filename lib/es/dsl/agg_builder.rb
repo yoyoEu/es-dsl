@@ -53,9 +53,7 @@ module ES
 
       def composite(&block)
         cb = CompositeBuilder.new(@model_class)
-        if block_given?
-          block.arity == 0 ? cb.instance_exec(&block) : block.call(cb)
-        end
+        BlockDispatch.call(cb, block)
         set_agg('composite', cb.to_h)
       end
 
@@ -66,9 +64,7 @@ module ES
       # ES `filter` aggregation — takes a filter block.
       def filter(&block)
         collector = FilterContext.new(model_qf_mod)
-        if block_given?
-          block.arity == 0 ? collector.instance_exec(&block) : block.call(collector)
-        end
+        BlockDispatch.call(collector, block)
         clause = if collector.clauses.size == 1
           clause_h(collector.clauses.first)
         else
@@ -120,13 +116,7 @@ module ES
       def aggs(name, &block)
         ab = AggBuilder.new(name, @model_class)
         ab.f_ref = @f_ref
-        if block_given?
-          case block.arity
-          when 0 then ab.instance_exec(&block)
-          when 1 then block.call(ab)
-          else        block.call(ab, @f_ref)
-          end
-        end
+        BlockDispatch.call(ab, block, @f_ref)
         @sub_aggs[name.to_s] = ab.build
         self
       end
@@ -156,20 +146,9 @@ module ES
           if defn
             accum = AggAccumulator.new(@model_class, @f_ref)
             f = @f_ref || accum.f
-            case defn.arity
-            when 0 then accum.instance_exec(&defn)
-            when 1 then defn.call(accum)
-            when 2 then defn.call(accum, f)
-            else        defn.call(accum, f, *args, **opts)
-            end
+            BlockDispatch.call_scope(defn, accum, f, args, opts)
             main_ab = accum.last_agg_builder
-            if call_block && main_ab
-              case call_block.arity
-              when 0 then main_ab.instance_exec(&call_block)
-              when 1 then call_block.call(main_ab)
-              else        call_block.call(main_ab, f)
-              end
-            end
+            BlockDispatch.call(main_ab, call_block, f) if call_block && main_ab
             accum.to_raw_aggs.each { |n, raw| @sub_aggs[n] = raw }
             return self
           end
@@ -236,13 +215,7 @@ module ES
       def aggregate(name, &block)
         ab = AggBuilder.new(name.to_s, @model_class)
         ab.f_ref = @f
-        if block
-          case block.arity
-          when 0 then ab.instance_exec(&block)
-          when 1 then block.call(ab)
-          else        block.call(ab, @f)
-          end
-        end
+        BlockDispatch.call(ab, block, @f)
         @aggs[name.to_s] = ab
         @last_ab = ab
         ab
@@ -262,24 +235,13 @@ module ES
         return super unless defn
 
         pre_keys = @aggs.keys.dup
-        case defn.arity
-        when 0 then instance_exec(&defn)
-        when 1 then defn.call(self)
-        when 2 then defn.call(self, @f)
-        else        defn.call(self, @f, *args, **kwargs)
-        end
+        BlockDispatch.call_scope(defn, self, @f, args, kwargs)
 
         new_abs = @aggs.select { |k, _| !pre_keys.include?(k) }.values
         main_ab = new_abs.last
         @last_ab = main_ab
 
-        if call_block && main_ab
-          case call_block.arity
-          when 0 then main_ab.instance_exec(&call_block)
-          when 1 then call_block.call(main_ab)
-          else        call_block.call(main_ab, @f)
-          end
-        end
+        BlockDispatch.call(main_ab, call_block, @f) if call_block && main_ab
 
         main_ab
       end
@@ -313,9 +275,7 @@ module ES
       end
 
       def sources(&block)
-        if block_given?
-          block.arity == 0 ? @sources_builder.instance_exec(&block) : block.call(@sources_builder)
-        end
+        BlockDispatch.call(@sources_builder, block)
         self
       end
 
@@ -342,9 +302,7 @@ module ES
 
       def aggregate(name, &block)
         ab = AggBuilder.new(name, @model_class)
-        if block_given?
-          block.arity == 0 ? ab.instance_exec(&block) : block.call(ab)
-        end
+        BlockDispatch.call(ab, block)
         @sources << { name.to_s => ab.build }
         self
       end
@@ -362,12 +320,7 @@ module ES
           defn = @model_class._agg_scopes[name.to_sym]
           if defn
             accum = AggAccumulator.new(@model_class)
-            case defn.arity
-            when 0 then accum.instance_exec(&defn)
-            when 1 then defn.call(accum)
-            when 2 then defn.call(accum, accum.f)
-            else        defn.call(accum, accum.f, *args)
-            end
+            BlockDispatch.call_scope(defn, accum, accum.f, args, opts)
             accum.to_raw_aggs.each { |n, raw| @sources << { n => raw } }
             return self
           end
@@ -391,9 +344,7 @@ module ES
 
       def filter(name, &block)
         collector = FilterContext.new(@model_qf_mod)
-        if block_given?
-          block.arity == 0 ? collector.instance_exec(&block) : block.call(collector)
-        end
+        BlockDispatch.call(collector, block)
         @named_filters[name.to_s] = if collector.clauses.size == 1
           clause_h(collector.clauses.first)
         else

@@ -133,22 +133,9 @@ module ES
           define_singleton_method(name) do |*args, **kwargs, &call_block|
             accum = AggAccumulator.new(model)
             f = accum.f
-            case definition_block.arity
-            when 0 then accum.instance_exec(&definition_block)
-            when 1 then definition_block.call(accum)
-            when 2 then definition_block.call(accum, f)
-            else        definition_block.call(accum, f, *args, **kwargs)
-            end
-            if call_block
-              main_ab = accum.last_agg_builder
-              if main_ab
-                case call_block.arity
-                when 0 then main_ab.instance_exec(&call_block)
-                when 1 then call_block.call(main_ab)
-                else        call_block.call(main_ab, f)
-                end
-              end
-            end
+            BlockDispatch.call_scope(definition_block, accum, f, args, kwargs)
+            main_ab = accum.last_agg_builder
+            BlockDispatch.call(main_ab, call_block, f) if call_block && main_ab
             c = Criteria.new(model)
             accum.to_raw_aggs.each { |agg_name, raw| c.aggregate(agg_name, raw) }
             c

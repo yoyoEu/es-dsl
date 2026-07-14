@@ -44,6 +44,9 @@ module ES
 
       private
 
+      RETRYABLE_ERRORS = [Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED].freeze
+      MAX_RETRIES = 2
+
       def post(path, body, timeout: nil)
         timeout ||= config.request_timeout
         request(:post, path, body, timeout: timeout)
@@ -77,7 +80,7 @@ module ES
 
         log_request(method, uri, body) if config.log
 
-        response = http.request(req)
+        response = request_with_retries { http.request(req) }
 
         parsed = JSON.parse(response.body, symbolize_names: false)
 
@@ -88,6 +91,20 @@ module ES
         end
 
         parsed
+      end
+
+      # Retries transient connection failures (timeouts, connection refused) when
+      # config.retry_on_failure is enabled. Does not retry on HTTP error responses
+      # (4xx/5xx) — those are surfaced as RequestError after a successful round-trip.
+      def request_with_retries
+        attempts = 0
+        begin
+          yield
+        rescue *RETRYABLE_ERRORS
+          attempts += 1
+          retry if config.retry_on_failure && attempts <= MAX_RETRIES
+          raise
+        end
       end
 
       def log_request(method, uri, body)

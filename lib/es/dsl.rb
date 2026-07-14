@@ -1,3 +1,4 @@
+require_relative 'dsl/block_dispatch'
 require_relative 'dsl/configuration'
 require_relative 'dsl/client'
 require_relative 'dsl/query'

@@ -24,7 +24,7 @@ module ES
       def filter(clauses = nil, &block)
         if block_given?
           ctx = FilterContext.new(@model_qf_mod)
-          block.arity.zero? ? ctx.instance_exec(&block) : block.call(ctx)
+          BlockDispatch.call(ctx, block)
           @filter.concat(ctx.clauses)
         elsif clauses
           @filter.concat(clauses)
@@ -35,7 +35,7 @@ module ES
       def must(clauses = nil, &block)
         if block_given?
           ctx = MustContext.new(@model_qf_mod)
-          block.arity.zero? ? ctx.instance_exec(&block) : block.call(ctx)
+          BlockDispatch.call(ctx, block)
           @must.concat(ctx.clauses)
         elsif clauses
           @must.concat(clauses)
@@ -46,7 +46,7 @@ module ES
       def should(clauses = nil, &block)
         if block_given?
           ctx = ShouldContext.new(@model_qf_mod)
-          block.arity.zero? ? ctx.instance_exec(&block) : block.call(ctx)
+          BlockDispatch.call(ctx, block)
           @should.concat(ctx.clauses)
         elsif clauses
           @should.concat(clauses)
@@ -57,7 +57,7 @@ module ES
       def must_not(clauses = nil, &block)
         if block_given?
           ctx = MustNotContext.new(@model_qf_mod)
-          block.arity.zero? ? ctx.instance_exec(&block) : block.call(ctx)
+          BlockDispatch.call(ctx, block)
           @must_not.concat(ctx.clauses)
         elsif clauses
           @must_not.concat(clauses)

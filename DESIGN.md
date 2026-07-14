@@ -332,8 +332,9 @@ and `minimum_should_match N` are available.
 
 ## Constraints
 
-- Ruby 2.6 compatible — no endless methods, no `...` forwarding
-- Tests: minitest 5.18.1
+- Ruby 3.4.3+ (see README.md) — code style still avoids endless methods and `...`
+  forwarding for readability, not version compatibility
+- Tests: minitest (see Gemfile.lock for the pinned version)
 - `rescue` modifier form disallowed (Rubocop)
 - `Date` requires explicit `require 'date'`
 - `Criteria#to_h` outputs `'aggregations'` key (ES accepts both `aggs`/`aggregations`)

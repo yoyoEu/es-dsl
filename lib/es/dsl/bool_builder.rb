@@ -19,7 +19,7 @@ module ES
       def filter(&block)
         if block_given?
           ctx = FilterContext.new(model_qf_mod)
-          block.arity.zero? ? ctx.instance_exec(&block) : block.call(ctx)
+          BlockDispatch.call(ctx, block)
           @criteria.add_filter_clauses(ctx.clauses)
           @criteria
         else
@@ -30,7 +30,7 @@ module ES
       def must(&block)
         if block_given?
           ctx = MustContext.new(model_qf_mod)
-          block.arity.zero? ? ctx.instance_exec(&block) : block.call(ctx)
+          BlockDispatch.call(ctx, block)
           @criteria.add_must_clauses(ctx.clauses)
           @criteria
         else
@@ -41,7 +41,7 @@ module ES
       def should(&block)
         if block_given?
           ctx = ShouldContext.new(model_qf_mod)
-          block.arity.zero? ? ctx.instance_exec(&block) : block.call(ctx)
+          BlockDispatch.call(ctx, block)
           @criteria.add_should_clauses(ctx.clauses)
           @criteria
         else
@@ -52,7 +52,7 @@ module ES
       def must_not(&block)
         if block_given?
           ctx = MustNotContext.new(model_qf_mod)
-          block.arity.zero? ? ctx.instance_exec(&block) : block.call(ctx)
+          BlockDispatch.call(ctx, block)
           @criteria.add_must_not_clauses(ctx.clauses)
           @criteria
         else

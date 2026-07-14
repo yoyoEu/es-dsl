@@ -41,7 +41,7 @@ module ES
       # match/knn etc. are not available (NoMethodError), same as filter {} elsewhere.
       def filter(&block)
         ctx = FilterContext.new(@model_qf_mod)
-        block.arity.zero? ? ctx.instance_exec(&block) : block.call(ctx)
+        BlockDispatch.call(ctx, block)
         @filter_clauses.concat(ctx.clauses)
         self
       end
